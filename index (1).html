@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Диаграмма Ганта — Стратегия роста 2026–2033</title>
+<style>
+  :root {
+    --bg: #0f1420;
+    --panel: #161d2e;
+    --panel2: #1c2438;
+    --border: #2a3348;
+    --text: #e8ecf5;
+    --muted: #8894ab;
+    --accent: #4f8cff;
+    --green: #2ecc71;
+    --yellow: #f5b642;
+    --red: #e74c3c;
+    --gray: #5b6478;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+    background: linear-gradient(160deg, #0b0f1a 0%, #131a2b 100%);
+    color: var(--text);
+    padding: 24px 16px 60px;
+  }
+  .container { max-width: 1500px; margin: 0 auto; }
+  header {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  header h1 {
+    font-size: 28px;
+    margin: 0 0 6px;
+    background: linear-gradient(90deg, #4f8cff, #7ee8fa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 800;
+  }
+  header p { color: var(--muted); margin: 0; font-size: 14px; }
+
+  .stats-bar {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 20px 0 28px;
+  }
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 22px;
+    min-width: 140px;
+    text-align: center;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+  }
+  .stat-card .num { font-size: 26px; font-weight: 800; }
+  .stat-card .label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .stat-card.done .num { color: var(--green); }
+  .stat-card.progress .num { color: var(--yellow); }
+  .stat-card.late .num { color: var(--red); }
+  .stat-card.notstarted .num { color: var(--gray); }
+  .stat-card.percent .num { color: var(--accent); }
+
+  .controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+  .controls select, .controls button {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 9px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .controls button.active, .controls select:focus { border-color: var(--accent); }
+  .controls button:hover { background: #232d47; }
+
+  .instructions {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 18px;
+    margin-bottom: 22px;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .instructions b { color: var(--text); }
+  .legend-dot {
+    display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: middle;
+  }
+
+  .table-wrap {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow-x: auto;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+  }
+  table { border-collapse: collapse; width: 100%; min-width: 1300px; }
+  thead th {
+    position: sticky; top: 0; z-index: 3;
+    background: #1a2135;
+    color: var(--text);
+    font-size: 12px;
+    padding: 10px 8px;
+    border-bottom: 2px solid var(--border);
+    text-align: center;
+    white-space: nowrap;
+  }
+  thead th.task-col { text-align: left; min-width: 260px; position: sticky; left: 0; z-index: 4; background: #1a2135; }
+  tbody td { border-bottom: 1px solid var(--border); padding: 6px; text-align: center; font-size: 12px; }
+  tbody td.task-name {
+    text-align: left; min-width: 260px; max-width: 320px;
+    position: sticky; left: 0; background: var(--panel);
+    font-size: 12.5px; padding: 8px 10px;
+  }
+  tbody td.resp-col { min-width: 130px; font-size: 11px; color: var(--muted); text-align: left; padding-left: 8px; }
+  tbody tr.block-row td {
+    text-align: left; font-weight: 700; color: #fff; padding: 8px 12px;
+    font-size: 13px; position: sticky; left: 0; z-index: 2;
+  }
+  tbody tr:hover td.task-name, tbody tr:hover td.resp-col { background: #202a42; }
+
+  .cell {
+    width: 34px; height: 30px; border-radius: 6px; margin: 2px auto;
+    cursor: pointer; transition: transform .12s ease, box-shadow .12s ease;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; user-select: none;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .cell:hover { transform: scale(1.12); box-shadow: 0 0 0 2px rgba(255,255,255,0.4); }
+  .cell.empty { background: transparent; border: none; cursor: default; }
+  .cell.empty:hover { transform: none; box-shadow: none; }
+
+  .status-notstarted { background: #2a3348; }
+  .status-progress { background: var(--yellow); }
+  .status-done { background: var(--green); }
+  .status-late { background: var(--red); }
+
+  .task-id-badge {
+    display: inline-block; font-size: 10px; color: var(--muted); margin-right: 6px;
+    background: #232d47; padding: 1px 6px; border-radius: 6px;
+  }
+
+  footer {
+    text-align: center; color: var(--muted); font-size: 12px; margin-top: 30px;
+  }
+
+  @media (max-width: 700px) {
+    header h1 { font-size: 20px; }
+    .cell { width: 26px; height: 24px; font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>📊 Диаграмма Ганта — Стратегия роста дистрибьютора</h1>
+    <p>Оборот с 150 млн ₽ (2025) до 10 млрд ₽ (2031–2033) · Интерактивный трекер выполнения по годам и кварталам</p>
+  </header>
+
+  <div class="stats-bar" id="statsBar"></div>
+
+  <div class="instructions">
+    <b>Как пользоваться:</b> кликните на цветной квадратик, чтобы переключить статус задачи вперёд
+    (<span class="legend-dot" style="background:#2a3348"></span>Не начато →
+    <span class="legend-dot" style="background:#f5b642"></span>В работе →
+    <span class="legend-dot" style="background:#2ecc71"></span>Выполнено →
+    <span class="legend-dot" style="background:#e74c3c"></span>Отставание → снова Не начато).
+    Кликните <b>правой кнопкой мыши</b> (или зажмите и удерживайте на телефоне), чтобы переключить статус в обратную сторону.
+    Все отметки сохраняются в этом браузере автоматически.
+  </div>
+
+  <div class="controls">
+    <label style="color:var(--muted); font-size:13px;">Год:</label>
+    <select id="yearFilter">
+      <option value="all">Все годы</option>
+    </select>
+    <label style="color:var(--muted); font-size:13px;">Блок:</label>
+    <select id="blockFilter">
+      <option value="all">Все блоки</option>
+    </select>
+    <button id="resetBtn">🔄 Сбросить все отметки</button>
+    <button id="exportBtn">💾 Экспорт статусов (JSON)</button>
+  </div>
+
+  <div class="table-wrap">
+    <table id="ganttTable">
+      <thead>
+        <tr id="headRow">
+          <th class="task-col">Задача / инициатива</th>
+        </tr>
+      </thead>
+      <tbody id="ganttBody"></tbody>
+    </table>
+  </div>
+
+  <footer>Данные основаны на стратегии роста компании · Статусы хранятся локально в вашем браузере (localStorage)</footer>
+</div>
+
+<script>
+const TASKS = [{"id": "1.1", "block": "1. Организация и управление", "name": "Диагностика стартовой точки (аудит воронки и процессов)", "resp": "Гендиректор, РОП", "sy": 2026, "sq": 1, "ey": 2026, "eq": 1, "budget": "-", "color": "#F4B183"}, {"id": "1.2", "block": "1. Организация и управление", "name": "Разработка и доработка скриптов продаж", "resp": "РОП, рук. продаж", "sy": 2026, "sq": 1, "ey": 2026, "eq": 1, "budget": "-", "color": "#F4B183"}, {"id": "1.3", "block": "1. Организация и управление", "name": "Внедрение CRM для 100% заявок", "resp": "Маркетолог, IT", "sy": 2026, "sq": 1, "ey": 2026, "eq": 1, "budget": "вкл. в 3,5 млн", "color": "#F4B183"}, {"id": "1.4", "block": "1. Организация и управление", "name": "Выход владельца из операционки (делегирование)", "resp": "Гендиректор", "sy": 2026, "sq": 1, "ey": 2028, "eq": 4, "budget": "-", "color": "#F4B183"}, {"id": "1.5", "block": "1. Организация и управление", "name": "Регулярная управленческая отчётность", "resp": "Финансист, гендир.", "sy": 2026, "sq": 1, "ey": 2026, "eq": 1, "budget": "вкл. в автоматизацию", "color": "#F4B183"}, {"id": "1.6", "block": "1. Организация и управление", "name": "Книга продаж, система наставничества", "resp": "РОП", "sy": 2026, "sq": 1, "ey": 2026, "eq": 1, "budget": "-", "color": "#F4B183"}, {"id": "2.1", "block": "2. Штат и найм", "name": "Найм менеджеров продаж (до 10-11 чел.)", "resp": "РОП, HR, гендир.", "sy": 2026, "sq": 1, "ey": 2026, "eq": 1, "budget": "2 млн", "color": "#FFD966"}, {"id": "2.2", "block": "2. Штат и найм", "name": "Найм маркетолога (директ) и контентщика", "resp": "Рук. маркетинга", "sy": 2026, "sq": 1, "ey": 2026, "eq": 1, "budget": "в ФОТ", "color": "#FFD966"}, {"id": "2.3", "block": "2. Штат и найм", "name": "Найм финспециалиста/бухгалтера", "resp": "Гендир./финансы", "sy": 2026, "sq": 2, "ey": 2026, "eq": 2, "budget": "в ФОТ", "color": "#FFD966"}, {"id": "2.4", "block": "2. Штат и найм", "name": "Формирование отдела маркетинга (SEO, SMM, TG, Директ)", "resp": "Дир. по маркетингу", "sy": 2026, "sq": 1, "ey": 2027, "eq": 3, "budget": "в ФОТ", "color": "#FFD966"}, {"id": "2.5", "block": "2. Штат и найм", "name": "Найм HR, региональных представителей", "resp": "HR-директор", "sy": 2027, "sq": 1, "ey": 2028, "eq": 4, "budget": "в ФОТ", "color": "#FFD966"}, {"id": "2.6", "block": "2. Штат и найм", "name": "Рост штата до 44+ чел., подготовка COO", "resp": "Гендир., операц. дир.", "sy": 2027, "sq": 1, "ey": 2028, "eq": 4, "budget": "-", "color": "#FFD966"}, {"id": "3.1", "block": "3. IT и автоматизация", "name": "Внедрение CRM и сквозной аналитики", "resp": "IT, маркетолог", "sy": 2026, "sq": 1, "ey": 2026, "eq": 1, "budget": "3,5 млн", "color": "#9DC3E6"}, {"id": "3.2", "block": "3. IT и автоматизация", "name": "Автоматизация воронки (речевая аналитика)", "resp": "IT/маркетинг", "sy": 2026, "sq": 1, "ey": 2026, "eq": 2, "budget": "вкл.", "color": "#9DC3E6"}, {"id": "3.3", "block": "3. IT и автоматизация", "name": "ИИ-бот квалификации + ИИ-конфигуратор", "resp": "IT, программист", "sy": 2026, "sq": 2, "ey": 2026, "eq": 3, "budget": "вкл.", "color": "#9DC3E6"}, {"id": "3.4", "block": "3. IT и автоматизация", "name": "ИИ-генерация SEO-контента", "resp": "SEO, маркетинг", "sy": 2026, "sq": 2, "ey": 2026, "eq": 3, "budget": "вкл.", "color": "#9DC3E6"}, {"id": "3.5", "block": "3. IT и автоматизация", "name": "Автоматизированная управленческая отчётность", "resp": "IT, фин. директор", "sy": 2026, "sq": 4, "ey": 2026, "eq": 4, "budget": "вкл.", "color": "#9DC3E6"}, {"id": "3.6", "block": "3. IT и автоматизация", "name": "Модернизация ИИ-инструментов (HR, email)", "resp": "IT, HR", "sy": 2027, "sq": 1, "ey": 2028, "eq": 4, "budget": "вкл.", "color": "#9DC3E6"}, {"id": "4.1", "block": "4. Маркетинг", "name": "Масштабирование SEO (300+ кластеров)", "resp": "SEO, маркетолог", "sy": 2026, "sq": 1, "ey": 2028, "eq": 4, "budget": "3-5% выручки", "color": "#A9D18E"}, {"id": "4.2", "block": "4. Маркетинг", "name": "Запуск Яндекс.Директ (пилот и масштаб)", "resp": "Маркетолог (директ)", "sy": 2026, "sq": 1, "ey": 2026, "eq": 2, "budget": "в бюджете марк.", "color": "#A9D18E"}, {"id": "4.3", "block": "4. Маркетинг", "name": "Стандартизация Авито, 50 регионов", "resp": "Продажи+маркетолог", "sy": 2026, "sq": 1, "ey": 2026, "eq": 4, "budget": "-", "color": "#A9D18E"}, {"id": "4.4", "block": "4. Маркетинг", "name": "Запуск Telegram-канала", "resp": "SMM/контент-мен.", "sy": 2026, "sq": 2, "ey": 2026, "eq": 2, "budget": "в бюджете марк.", "color": "#A9D18E"}, {"id": "4.5", "block": "4. Маркетинг", "name": "Запуск на Wildberries/Ozon", "resp": "Менеджер, маркетинг", "sy": 2026, "sq": 3, "ey": 2026, "eq": 4, "budget": "в бюджете марк.", "color": "#A9D18E"}, {"id": "4.6", "block": "4. Маркетинг", "name": "Email-реактивация, партнёрские продажи", "resp": "Маркетолог", "sy": 2026, "sq": 3, "ey": 2026, "eq": 3, "budget": "в бюджете марк.", "color": "#A9D18E"}, {"id": "4.7", "block": "4. Маркетинг", "name": "Рост до 7+ каналов лидогенерации", "resp": "Дир. по маркетингу", "sy": 2027, "sq": 1, "ey": 2028, "eq": 4, "budget": "в бюджете марк.", "color": "#A9D18E"}, {"id": "5.1", "block": "5. Продукт/каталог/поставщики", "name": "Фиксация каталога, приоритизация маржи", "resp": "Продакт-мен., РОП", "sy": 2026, "sq": 1, "ey": 2026, "eq": 1, "budget": "-", "color": "#D9B3FF"}, {"id": "5.2", "block": "5. Продукт/каталог/поставщики", "name": "Расширение категорий (HoReCa, смежные)", "resp": "Гендир., ком.дир.", "sy": 2026, "sq": 1, "ey": 2028, "eq": 4, "budget": "2,5 млн", "color": "#D9B3FF"}, {"id": "5.3", "block": "5. Продукт/каталог/поставщики", "name": "Ответственные менеджеры по категориям", "resp": "РОП", "sy": 2026, "sq": 2, "ey": 2027, "eq": 4, "budget": "-", "color": "#D9B3FF"}, {"id": "5.4", "block": "5. Продукт/каталог/поставщики", "name": "Альтернативные поставщики/эксклюзивы", "resp": "Ком.дир., логист", "sy": 2026, "sq": 1, "ey": 2027, "eq": 4, "budget": "-", "color": "#D9B3FF"}, {"id": "5.5", "block": "5. Продукт/каталог/поставщики", "name": "Подготовка к собственному импорту", "resp": "Проект. офис, ком.дир.", "sy": 2028, "sq": 1, "ey": 2030, "eq": 4, "budget": "по решению", "color": "#D9B3FF"}, {"id": "6.1", "block": "6. Продажи и каналы", "name": "Систематизация продаж в CRM", "resp": "РОП, IT", "sy": 2026, "sq": 1, "ey": 2026, "eq": 2, "budget": "вкл. в автоматизацию", "color": "#F8CBAD"}, {"id": "6.2", "block": "6. Продажи и каналы", "name": "Старт холодных B2B продаж (пилот)", "resp": "РОП по B2B", "sy": 2026, "sq": 3, "ey": 2026, "eq": 4, "budget": "ФОТ", "color": "#F8CBAD"}, {"id": "6.3", "block": "6. Продажи и каналы", "name": "Настройка воронки повторных продаж/LTV", "resp": "Маркетолог, продажи", "sy": 2026, "sq": 3, "ey": 2026, "eq": 4, "budget": "-", "color": "#F8CBAD"}, {"id": "6.4", "block": "6. Продажи и каналы", "name": "Размещение на Wildberries/Ozon", "resp": "Продажи, маркетинг", "sy": 2026, "sq": 4, "ey": 2026, "eq": 4, "budget": "-", "color": "#F8CBAD"}, {"id": "6.5", "block": "6. Продажи и каналы", "name": "Первые региональные представители", "resp": "COO, HR, рег.мен.", "sy": 2027, "sq": 1, "ey": 2028, "eq": 4, "budget": "ФОТ", "color": "#F8CBAD"}, {"id": "6.6", "block": "6. Продажи и каналы", "name": "Контроль: ни один канал не > 30%", "resp": "Директор продаж", "sy": 2028, "sq": 1, "ey": 2033, "eq": 4, "budget": "-", "color": "#F8CBAD"}, {"id": "7.1", "block": "7. Финансы и инвестиции", "name": "Повышение маркетингового бюджета до 4-5%", "resp": "Гендир., фин.дир.", "sy": 2026, "sq": 1, "ey": 2027, "eq": 4, "budget": "6+ млн", "color": "#BDD7EE"}, {"id": "7.2", "block": "7. Финансы и инвестиции", "name": "Контроль ДДС и точка безубыточности", "resp": "Фин. директор", "sy": 2026, "sq": 2, "ey": 2026, "eq": 4, "budget": "-", "color": "#BDD7EE"}, {"id": "7.3", "block": "7. Финансы и инвестиции", "name": "Оборотный капитал, факторинг", "resp": "Фин. директор", "sy": 2026, "sq": 1, "ey": 2027, "eq": 4, "budget": "5 млн", "color": "#BDD7EE"}, {"id": "7.4", "block": "7. Финансы и инвестиции", "name": "Переход на ОСН, расширение финконтроля", "resp": "Фин. директор", "sy": 2027, "sq": 1, "ey": 2028, "eq": 4, "budget": "-", "color": "#BDD7EE"}, {"id": "7.5", "block": "7. Финансы и инвестиции", "name": "Инвестиции в расширение каталога, найм, M&A", "resp": "Гендир., проект. офис", "sy": 2028, "sq": 1, "ey": 2033, "eq": 4, "budget": "2,5-4,0 млн+", "color": "#BDD7EE"}, {"id": "8.1", "block": "8. Экспансия и M&A", "name": "Экспансия в регионы", "resp": "COO, рег. директор", "sy": 2027, "sq": 4, "ey": 2029, "eq": 4, "budget": "ФОТ", "color": "#C6E0B4"}, {"id": "8.2", "block": "8. Экспансия и M&A", "name": "M&A региональных дилеров", "resp": "Гендир., проект. офис", "sy": 2028, "sq": 4, "ey": 2031, "eq": 4, "budget": ">2,0 млрд на сделки", "color": "#C6E0B4"}, {"id": "8.3", "block": "8. Экспансия и M&A", "name": "Организационная консолидация (дивизионы)", "resp": "COO, топ-менеджмент", "sy": 2029, "sq": 1, "ey": 2030, "eq": 4, "budget": "-", "color": "#C6E0B4"}, {"id": "9.1", "block": "9. Управление рисками", "name": "Диверсификация каналов лидогенерации", "resp": "Маркетинг, продажи", "sy": 2026, "sq": 1, "ey": 2028, "eq": 4, "budget": "-", "color": "#FFE699"}, {"id": "9.2", "block": "9. Управление рисками", "name": "Системный пул найма, воронка рекрутинга", "resp": "HR, руководители", "sy": 2026, "sq": 1, "ey": 2033, "eq": 4, "budget": "-", "color": "#FFE699"}, {"id": "9.3", "block": "9. Управление рисками", "name": "Запас поставщиков в каждой категории", "resp": "Ком. директор", "sy": 2026, "sq": 1, "ey": 2027, "eq": 4, "budget": "-", "color": "#FFE699"}, {"id": "9.4", "block": "9. Управление рисками", "name": "Факторинг/лизинг для клиентов", "resp": "Фин. директор", "sy": 2026, "sq": 1, "ey": 2028, "eq": 4, "budget": "-", "color": "#FFE699"}, {"id": "9.5", "block": "9. Управление рисками", "name": "Еженедельный мониторинг ДДС", "resp": "Фин. директор", "sy": 2026, "sq": 2, "ey": 2033, "eq": 4, "budget": "-", "color": "#FFE699"}, {"id": "M1", "block": "10. Контрольные точки (Milestones)", "name": "Выручка >18 млн/мес, штат 10-11 чел.", "resp": "Гендир., РОП", "sy": 2026, "sq": 1, "ey": 2026, "eq": 1, "budget": "-", "color": "#FF7C80"}, {"id": "M2", "block": "10. Контрольные точки (Milestones)", "name": "Точка безубыточности (>243 млн/год)", "resp": "Фин. директор", "sy": 2026, "sq": 4, "ey": 2027, "eq": 1, "budget": "-", "color": "#FF7C80"}, {"id": "M3", "block": "10. Контрольные точки (Milestones)", "name": "500 млн годовой выручки", "resp": "Ком. директор", "sy": 2027, "sq": 3, "ey": 2027, "eq": 4, "budget": "-", "color": "#FF7C80"}, {"id": "M4", "block": "10. Контрольные точки (Milestones)", "name": "1 млрд/год, 44 чел., регион. офисы", "resp": "COO, HR, Ком.дир.", "sy": 2028, "sq": 4, "ey": 2028, "eq": 4, "budget": "-", "color": "#FF7C80"}, {"id": "M5", "block": "10. Контрольные точки (Milestones)", "name": "2,25-4,27 млрд/год", "resp": "COO, CEO", "sy": 2030, "sq": 1, "ey": 2030, "eq": 4, "budget": "-", "color": "#FF7C80"}, {"id": "M6", "block": "10. Контрольные точки (Milestones)", "name": "Интеграция M&A и собственный импорт", "resp": "Проект. офис, фин.дир.", "sy": 2029, "sq": 1, "ey": 2032, "eq": 4, "budget": "-", "color": "#FF7C80"}, {"id": "M7", "block": "10. Контрольные точки (Milestones)", "name": "10 млрд/год (2,14% TAM)", "resp": "Совет директоров, CEO", "sy": 2031, "sq": 1, "ey": 2033, "eq": 4, "budget": "-", "color": "#FF7C80"}];
+const BLOCK_COLORS = {"1. Организация и управление": "#F4B183", "2. Штат и найм": "#FFD966", "3. IT и автоматизация": "#9DC3E6", "4. Маркетинг": "#A9D18E", "5. Продукт/каталог/поставщики": "#D9B3FF", "6. Продажи и каналы": "#F8CBAD", "7. Финансы и инвестиции": "#BDD7EE", "8. Экспансия и M&A": "#C6E0B4", "9. Управление рисками": "#FFE699", "10. Контрольные точки (Milestones)": "#FF7C80"};
+
+const YEARS = [];
+for (let y = 2026; y <= 2033; y++) YEARS.push(y);
+
+const STATUS_CYCLE = ["notstarted", "progress", "done", "late"];
+const STATUS_LABELS = {
+  notstarted: "Не начато",
+  progress: "В работе",
+  done: "Выполнено",
+  late: "Отставание"
+};
+const STATUS_ICONS = {
+  notstarted: "",
+  progress: "●",
+  done: "✓",
+  late: "!"
+};
+
+const STORAGE_KEY = "gantt_strategy_status_v1";
+
+function loadStatuses() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch(e) { return {}; }
+}
+function saveStatuses(obj) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
+}
+
+let statuses = loadStatuses();
+
+function getCellKey(taskId, year, q) {
+  return taskId + "_" + year + "_Q" + q;
+}
+
+function getStatus(taskId, year, q) {
+  const key = getCellKey(taskId, year, q);
+  return statuses[key] || "notstarted";
+}
+
+function setStatus(taskId, year, q, status) {
+  const key = getCellKey(taskId, year, q);
+  statuses[key] = status;
+  saveStatuses(statuses);
+}
+
+function isTaskActiveInPeriod(task, year, q) {
+  if (year < task.sy || year > task.ey) return false;
+  if (year === task.sy && year === task.ey) return q >= task.sq && q <= task.eq;
+  if (year === task.sy) return q >= task.sq;
+  if (year === task.ey) return q <= task.eq;
+  return true;
+}
+
+// Build header
+function buildHeader() {
+  const headRow = document.getElementById("headRow");
+  YEARS.forEach(y => {
+    for (let q = 1; q <= 4; q++) {
+      const th = document.createElement("th");
+      th.textContent = "Q" + q + " '" + String(y).slice(2);
+      th.dataset.year = y;
+      headRow.appendChild(th);
+    }
+  });
+  const thResp = document.createElement("th");
+  thResp.textContent = "Ответственный";
+  thResp.style.minWidth = "130px";
+  headRow.appendChild(thResp);
+}
+
+function buildBody() {
+  const body = document.getElementById("ganttBody");
+  body.innerHTML = "";
+  let currentBlock = null;
+
+  const yearFilter = document.getElementById("yearFilter").value;
+  const blockFilter = document.getElementById("blockFilter").value;
+
+  TASKS.forEach(task => {
+    if (blockFilter !== "all" && task.block !== blockFilter) return;
+
+    if (task.block !== currentBlock) {
+      currentBlock = task.block;
+      const trBlock = document.createElement("tr");
+      trBlock.className = "block-row";
+      const totalCols = 1 + YEARS.length*4 + 1;
+      const td = document.createElement("td");
+      td.colSpan = totalCols;
+      td.textContent = task.block;
+      td.style.background = task.color;
+      trBlock.appendChild(td);
+      body.appendChild(trBlock);
+    }
+
+    const tr = document.createElement("tr");
+    tr.dataset.taskId = task.id;
+
+    const tdName = document.createElement("td");
+    tdName.className = "task-name";
+    tdName.innerHTML = '<span class="task-id-badge">' + task.id + '</span>' + task.name +
+      (task.budget && task.budget !== "-" ? '<div style="color:var(--muted);font-size:10.5px;margin-top:2px;">💰 ' + task.budget + '</div>' : '');
+    tr.appendChild(tdName);
+
+    YEARS.forEach(y => {
+      for (let q = 1; q <= 4; q++) {
+        const td = document.createElement("td");
+        if (yearFilter !== "all" && String(y) !== yearFilter) {
+          td.style.display = "none";
+        }
+        const active = isTaskActiveInPeriod(task, y, q);
+        if (active) {
+          const cellDiv = document.createElement("div");
+          const status = getStatus(task.id, y, q);
+          cellDiv.className = "cell status-" + status;
+          cellDiv.textContent = STATUS_ICONS[status];
+          cellDiv.title = task.name + " — " + y + " Q" + q + " (" + STATUS_LABELS[status] + ")\nЛКМ: вперёд, ПКМ: назад";
+          cellDiv.style.background = status === "notstarted" ? task.color + "33" : "";
+          if (status === "notstarted") {
+            cellDiv.style.border = "1px solid " + task.color;
+          }
+          cellDiv.addEventListener("click", () => cycleStatus(task.id, y, q, cellDiv, 1));
+          cellDiv.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            cycleStatus(task.id, y, q, cellDiv, -1);
+          });
+          td.appendChild(cellDiv);
+        } else {
+          const emptyDiv = document.createElement("div");
+          emptyDiv.className = "cell empty";
+          td.appendChild(emptyDiv);
+        }
+        tr.appendChild(td);
+      }
+    });
+
+    const tdResp = document.createElement("td");
+    tdResp.className = "resp-col";
+    tdResp.textContent = task.resp;
+    tr.appendChild(tdResp);
+
+    body.appendChild(tr);
+  });
+}
+
+function cycleStatus(taskId, year, q, cellDiv, direction) {
+  const current = getStatus(taskId, year, q);
+  let idx = STATUS_CYCLE.indexOf(current);
+  idx = (idx + direction + STATUS_CYCLE.length) % STATUS_CYCLE.length;
+  const next = STATUS_CYCLE[idx];
+  setStatus(taskId, year, q, next);
+
+  const task = TASKS.find(t => t.id === taskId);
+  cellDiv.className = "cell status-" + next;
+  cellDiv.textContent = STATUS_ICONS[next];
+  cellDiv.title = task.name + " — " + year + " Q" + q + " (" + STATUS_LABELS[next] + ")\nЛКМ: вперёд, ПКМ: назад";
+  if (next === "notstarted") {
+    cellDiv.style.background = task.color + "33";
+    cellDiv.style.border = "1px solid " + task.color;
+  } else {
+    cellDiv.style.background = "";
+    cellDiv.style.border = "1px solid rgba(255,255,255,0.08)";
+  }
+  updateStats();
+}
+
+function updateStats() {
+  let done=0, progress=0, late=0, notstarted=0, total=0;
+  TASKS.forEach(task => {
+    YEARS.forEach(y => {
+      for (let q=1; q<=4; q++) {
+        if (isTaskActiveInPeriod(task, y, q)) {
+          total++;
+          const s = getStatus(task.id, y, q);
+          if (s === "done") done++;
+          else if (s === "progress") progress++;
+          else if (s === "late") late++;
+          else notstarted++;
+        }
+      }
+    });
+  });
+  const pct = total > 0 ? Math.round((done/total)*100) : 0;
+
+  const statsBar = document.getElementById("statsBar");
+  statsBar.innerHTML = `
+    <div class="stat-card percent"><div class="num">${pct}%</div><div class="label">Общий прогресс</div></div>
+    <div class="stat-card done"><div class="num">${done}</div><div class="label">✓ Выполнено</div></div>
+    <div class="stat-card progress"><div class="num">${progress}</div><div class="label">● В работе</div></div>
+    <div class="stat-card late"><div class="num">${late}</div><div class="label">! Отставание</div></div>
+    <div class="stat-card notstarted"><div class="num">${notstarted}</div><div class="label">Не начато</div></div>
+  `;
+}
+
+function buildFilters() {
+  const yearFilter = document.getElementById("yearFilter");
+  YEARS.forEach(y => {
+    const opt = document.createElement("option");
+    opt.value = y;
+    opt.textContent = y;
+    yearFilter.appendChild(opt);
+  });
+  const blockFilter = document.getElementById("blockFilter");
+  Object.keys(BLOCK_COLORS).forEach(b => {
+    const opt = document.createElement("option");
+    opt.value = b;
+    opt.textContent = b;
+    blockFilter.appendChild(opt);
+  });
+
+  yearFilter.addEventListener("change", () => { buildBody(); });
+  blockFilter.addEventListener("change", () => { buildBody(); });
+}
+
+document.getElementById("resetBtn").addEventListener("click", () => {
+  if (confirm("Сбросить все отметки статусов? Это действие нельзя отменить.")) {
+    statuses = {};
+    saveStatuses(statuses);
+    buildBody();
+    updateStats();
+  }
+});
+
+document.getElementById("exportBtn").addEventListener("click", () => {
+  const dataStr = JSON.stringify(statuses, null, 2);
+  const blob = new Blob([dataStr], {type: "application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "gantt_status_export.json";
+  a.click();
+});
+
+buildHeader();
+buildFilters();
+buildBody();
+updateStats();
+</script>
+</body>
+</html>
