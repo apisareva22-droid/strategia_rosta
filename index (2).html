@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Диаграмма Ганта — Стратегия роста 2026-2033</title>
+<style>
+  :root {
+    --bg: #0f1420; --panel: #161d2e; --panel2: #1c2438; --border: #2a3348;
+    --text: #e8ecf5; --muted: #8894ab; --accent: #4f8cff;
+    --green: #2ecc71; --yellow: #f5b642; --red: #e74c3c; --gray: #5b6478;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+    background: linear-gradient(160deg, #0b0f1a 0%, #131a2b 100%);
+    color: var(--text); padding: 24px 16px 60px;
+  }
+  .container { max-width: 1600px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 20px; }
+  header h1 {
+    font-size: 26px; margin: 0 0 6px;
+    background: linear-gradient(90deg, #4f8cff, #7ee8fa);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800;
+  }
+  header p { color: var(--muted); margin: 0; font-size: 13px; }
+
+  .sync-bar { display:flex; align-items:center; justify-content:center; gap:10px; margin:14px 0; font-size:13px; color:var(--muted); }
+  .sync-dot { width:9px; height:9px; border-radius:50%; background:var(--gray); }
+  .sync-dot.ok { background:var(--green); box-shadow:0 0 8px var(--green); }
+  .sync-dot.err { background:var(--red); box-shadow:0 0 8px var(--red); }
+  .sync-dot.loading { background:var(--yellow); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+
+  .stats-bar { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; margin:16px 0 22px; }
+  .stat-card { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:12px 20px; min-width:120px; text-align:center; box-shadow:0 4px 14px rgba(0,0,0,0.25); }
+  .stat-card .num { font-size:24px; font-weight:800; }
+  .stat-card .label { font-size:11px; color:var(--muted); margin-top:4px; }
+  .stat-card.done .num { color:var(--green); }
+  .stat-card.progress .num { color:var(--yellow); }
+  .stat-card.late .num { color:var(--red); }
+  .stat-card.notstarted .num { color:var(--gray); }
+  .stat-card.percent .num { color:var(--accent); }
+
+  .controls { display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:center; margin-bottom:18px; }
+  .controls select, .controls button { background:var(--panel2); border:1px solid var(--border); color:var(--text); padding:9px 14px; border-radius:10px; font-size:13px; cursor:pointer; }
+  .controls button:hover { background:#232d47; }
+
+  .instructions { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:12px 18px; margin-bottom:18px; font-size:12.5px; color:var(--muted); line-height:1.6; }
+  .instructions b { color:var(--text); }
+  .legend-dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:5px; vertical-align:middle; }
+
+  .table-wrap { background:var(--panel); border:1px solid var(--border); border-radius:16px; overflow-x:auto; box-shadow:0 8px 30px rgba(0,0,0,0.35); }
+  table { border-collapse:collapse; width:100%; min-width:1400px; }
+  thead th { position:sticky; top:0; z-index:3; background:#1a2135; color:var(--text); font-size:11px; padding:8px 5px; border-bottom:2px solid var(--border); text-align:center; white-space:nowrap; }
+  thead th.task-col { text-align:left; min-width:260px; position:sticky; left:0; z-index:4; background:#1a2135; }
+  thead th.year-sep { border-left:2px solid var(--accent); }
+  tbody td { border-bottom:1px solid var(--border); padding:4px; text-align:center; font-size:12px; }
+  tbody td.task-name { text-align:left; min-width:260px; max-width:320px; position:sticky; left:0; background:var(--panel); font-size:12px; padding:7px 10px; }
+  tbody td.resp-col { min-width:120px; font-size:10.5px; color:var(--muted); text-align:left; padding-left:8px; }
+  tbody tr.block-row td { text-align:left; font-weight:700; color:#fff; padding:7px 12px; font-size:12.5px; position:sticky; left:0; z-index:2; }
+  tbody tr:hover td.task-name, tbody tr:hover td.resp-col { background:#202a42; }
+
+  .cell { width:28px; height:26px; border-radius:6px; margin:2px auto; cursor:pointer; transition:transform .12s ease, box-shadow .12s ease; display:flex; align-items:center; justify-content:center; font-size:12px; user-select:none; border:1px solid rgba(255,255,255,0.08); }
+  .cell:hover { transform:scale(1.15); box-shadow:0 0 0 2px rgba(255,255,255,0.4); }
+  .cell.empty { background:transparent; border:none; cursor:default; }
+  .cell.empty:hover { transform:none; box-shadow:none; }
+  .cell.syncing { opacity:0.5; }
+
+  .status-notstarted { background:#2a3348; }
+  .status-progress { background:var(--yellow); }
+  .status-done { background:var(--green); }
+  .status-late { background:var(--red); }
+
+  .task-id-badge { display:inline-block; font-size:9.5px; color:var(--muted); margin-right:6px; background:#232d47; padding:1px 6px; border-radius:6px; }
+
+  footer { text-align:center; color:var(--muted); font-size:12px; margin-top:26px; line-height:1.8; }
+
+  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#1a2135; border:1px solid var(--border); color:var(--text); padding:10px 20px; border-radius:10px; font-size:13px; box-shadow:0 6px 20px rgba(0,0,0,0.4); opacity:0; pointer-events:none; transition:opacity .3s ease; z-index:100; }
+  .toast.show { opacity:1; }
+  .toast.error { border-color:var(--red); }
+
+  @media (max-width: 700px) {
+    header h1 { font-size:19px; }
+    .cell { width:22px; height:20px; font-size:10px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Диаграмма Ганта — Стратегия роста дистрибьютора</h1>
+    <p>Оборот с 150 млн руб (2025) до 10 млрд руб (2031-2033) · 2026 год — по месяцам, 2027-2033 — по кварталам</p>
+  </header>
+
+  <div class="sync-bar">
+    <span class="sync-dot" id="syncDot"></span>
+    <span id="syncText">Подключение к Google Таблице...</span>
+  </div>
+
+  <div class="stats-bar" id="statsBar"></div>
+
+  <div class="instructions">
+    <b>Как пользоваться:</b> клик на квадратик — статус вперёд
+    (<span class="legend-dot" style="background:#2a3348"></span>Не начато &rarr;
+    <span class="legend-dot" style="background:#f5b642"></span>В работе &rarr;
+    <span class="legend-dot" style="background:#2ecc71"></span>Выполнено &rarr;
+    <span class="legend-dot" style="background:#e74c3c"></span>Отставание &rarr; снова Не начато).
+    <b>Правый клик</b> — статус назад. Все изменения <b>автоматически записываются в Google Таблицу</b>.
+    Если статус поменяли прямо в таблице — нажмите «Обновить с таблицы» на сайте.
+  </div>
+
+  <div class="controls">
+    <label style="color:var(--muted); font-size:13px;">Год:</label>
+    <select id="yearFilter"><option value="all">Все годы</option></select>
+    <label style="color:var(--muted); font-size:13px;">Блок:</label>
+    <select id="blockFilter"><option value="all">Все блоки</option></select>
+    <button id="refreshBtn">Обновить с таблицы</button>
+  </div>
+
+  <div class="table-wrap">
+    <table id="ganttTable">
+      <thead><tr id="headRow"><th class="task-col">Задача / инициатива</th></tr></thead>
+      <tbody id="ganttBody"></tbody>
+    </table>
+  </div>
+
+  <footer>
+    Данные синхронизированы с Google Таблицей через Google Apps Script.<br>
+    Изменения на сайте сразу пишутся в таблицу, изменения в таблице подтягиваются кнопкой «Обновить».
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===================== НАСТРОЙКА: ВСТАВЬТЕ СЮДА ВАШ URL ВЕБ-ПРИЛОЖЕНИЯ ===================== */
+const SCRIPT_URL = "ВСТАВЬТЕ_СЮДА_ВАШУ_ССЫЛКУ_НА_APPS_SCRIPT_WEBAPP";
+/* ============================================================================================ */
+
+const TASKS = [{"id": "1.1", "block": "1. Организация и управление", "name": "Диагностика стартовой точки (аудит воронки и процессов)", "resp": "Гендиректор, РОП", "budget": "-", "color": "F4B183", "active_periods": ["2026-M01"]}, {"id": "1.2", "block": "1. Организация и управление", "name": "Разработка и доработка скриптов продаж", "resp": "РОП, рук. продаж", "budget": "-", "color": "F4B183", "active_periods": ["2026-M01", "2026-M02"]}, {"id": "1.3", "block": "1. Организация и управление", "name": "Внедрение CRM для 100% заявок", "resp": "Маркетолог, IT", "budget": "вкл. в 3,5 млн", "color": "F4B183", "active_periods": ["2026-M01", "2026-M02"]}, {"id": "1.4", "block": "1. Организация и управление", "name": "Выход владельца из операционки (делегирование)", "resp": "Гендиректор", "budget": "-", "color": "F4B183", "active_periods": ["2026-M01", "2026-M02", "2026-M03", "2026-M04", "2026-M05", "2026-M06", "2026-M07", "2026-M08", "2026-M09", "2026-M10", "2026-M11", "2026-M12", "2027-Q1", "2027-Q2", "2027-Q3", "2027-Q4", "2028-Q1", "2028-Q2", "2028-Q3", "2028-Q4"]}, {"id": "1.5", "block": "1. Организация и управление", "name": "Регулярная управленческая отчётность", "resp": "Финансист, гендир.", "budget": "вкл. в автоматизацию", "color": "F4B183", "active_periods": ["2026-M02", "2026-M03", "2026-M04", "2026-M05", "2026-M06", "2026-M07", "2026-M08", "2026-M09", "2026-M10", "2026-M11", "2026-M12"]}, {"id": "1.6", "block": "1. Организация и управление", "name": "Книга продаж, система наставничества", "resp": "РОП", "budget": "-", "color": "F4B183", "active_periods": ["2026-M02", "2026-M03"]}, {"id": "2.1", "block": "2. Штат и найм", "name": "Найм менеджеров продаж (до 10-11 чел.)", "resp": "РОП, HR, гендир.", "budget": "2 млн", "color": "FFD966", "active_periods": ["2026-M01", "2026-M02", "2026-M03"]}, {"id": "2.2", "block": "2. Штат и найм", "name": "Найм маркетолога (директ) и контентщика", "resp": "Рук. маркетинга", "budget": "в ФОТ", "color": "FFD966", "active_periods": ["2026-M01", "2026-M02", "2026-M03"]}, {"id": "2.3", "block": "2. Штат и найм", "name": "Найм финспециалиста/бухгалтера", "resp": "Гендир./финансы", "budget": "в ФОТ", "color": "FFD966", "active_periods": ["2026-M02"]}, {"id": "2.4", "block": "2. Штат и найм", "name": "Формирование отдела маркетинга (SEO, SMM, TG, Директ)", "resp": "Дир. по маркетингу", "budget": "в ФОТ", "color": "FFD966", "active_periods": ["2026-M01", "2026-M02", "2026-M03", "2026-M04", "2026-M05", "2026-M06", "2026-M07", "2026-M08", "2026-M09", "2026-M10", "2026-M11", "2026-M12", "2027-Q1", "2027-Q2", "2027-Q3"]}, {"id": "2.5", "block": "2. Штат и найм", "name": "Найм HR, региональных представителей", "resp": "HR-директор", "budget": "в ФОТ", "color": "FFD966", "active_periods": ["2027-Q1", "2027-Q2", "2027-Q3", "2027-Q4", "2028-Q1", "2028-Q2", "2028-Q3", "2028-Q4"]}, {"id": "2.6", "block": "2. Штат и найм", "name": "Рост штата до 44+ чел., подготовка COO", "resp": "Гендир., операц. дир.", "budget": "-", "color": "FFD966", "active_periods": ["2027-Q1", "2027-Q2", "2027-Q3", "2027-Q4", "2028-Q1", "2028-Q2", "2028-Q3", "2028-Q4"]}, {"id": "3.1", "block": "3. IT и автоматизация", "name": "Внедрение CRM и сквозной аналитики", "resp": "IT, маркетолог", "budget": "3,5 млн", "color": "9DC3E6", "active_periods": ["2026-M01", "2026-M02"]}, {"id": "3.2", "block": "3. IT и автоматизация", "name": "Автоматизация воронки (речевая аналитика)", "resp": "IT/маркетинг", "budget": "вкл.", "color": "9DC3E6", "active_periods": ["2026-M01", "2026-M02", "2026-M03", "2026-M04", "2026-M05", "2026-M06"]}, {"id": "3.3", "block": "3. IT и автоматизация", "name": "ИИ-бот квалификации + ИИ-конфигуратор", "resp": "IT, программист", "budget": "вкл.", "color": "9DC3E6", "active_periods": ["2026-M04", "2026-M05", "2026-M06", "2026-M07", "2026-M08", "2026-M09"]}, {"id": "3.4", "block": "3. IT и автоматизация", "name": "ИИ-генерация SEO-контента", "resp": "SEO, маркетинг", "budget": "вкл.", "color": "9DC3E6", "active_periods": ["2026-M04", "2026-M05", "2026-M06", "2026-M07", "2026-M08", "2026-M09"]}, {"id": "3.5", "block": "3. IT и автоматизация", "name": "Автоматизированная управленческая отчётность", "resp": "IT, фин. директор", "budget": "вкл.", "color": "9DC3E6", "active_periods": ["2026-M10", "2026-M11", "2026-M12"]}, {"id": "3.6", "block": "3. IT и автоматизация", "name": "Модернизация ИИ-инструментов (HR, email)", "resp": "IT, HR", "budget": "вкл.", "color": "9DC3E6", "active_periods": ["2027-Q1", "2027-Q2", "2027-Q3", "2027-Q4", "2028-Q1", "2028-Q2", "2028-Q3", "2028-Q4"]}, {"id": "4.1", "block": "4. Маркетинг", "name": "Масштабирование SEO (300+ кластеров)", "resp": "SEO, маркетолог", "budget": "3-5% выручки", "color": "A9D18E", "active_periods": ["2026-M01", "2026-M02", "2026-M03", "2026-M04", "2026-M05", "2026-M06", "2026-M07", "2026-M08", "2026-M09", "2026-M10", "2026-M11", "2026-M12", "2027-Q1", "2027-Q2", "2027-Q3", "2027-Q4", "2028-Q1", "2028-Q2", "2028-Q3", "2028-Q4"]}, {"id": "4.2", "block": "4. Маркетинг", "name": "Запуск Яндекс.Директ (пилот и масштаб)", "resp": "Маркетолог (директ)", "budget": "в бюджете марк.", "color": "A9D18E", "active_periods": ["2026-M01", "2026-M02", "2026-M03", "2026-M04", "2026-M05", "2026-M06"]}, {"id": "4.3", "block": "4. Маркетинг", "name": "Стандартизация Авито, 50 регионов", "resp": "Продажи+маркетолог", "budget": "-", "color": "A9D18E", "active_periods": ["2026-M01", "2026-M02", "2026-M03", "2026-M04", "2026-M05", "2026-M06", "2026-M07", "2026-M08", "2026-M09", "2026-M10", "2026-M11", "2026-M12"]}, {"id": "4.4", "block": "4. Маркетинг", "name": "Запуск Telegram-канала", "resp": "SMM/контент-мен.", "budget": "в бюджете марк.", "color": "A9D18E", "active_periods": ["2026-M04", "2026-M05", "2026-M06"]}, {"id": "4.5", "block": "4. Маркетинг", "name": "Запуск на Wildberries/Ozon", "resp": "Менеджер, маркетинг", "budget": "в бюджете марк.", "color": "A9D18E", "active_periods": ["2026-M07", "2026-M08", "2026-M09", "2026-M10", "2026-M11", "2026-M12"]}, {"id": "4.6", "block": "4. Маркетинг", "name": "Email-реактивация, партнёрские продажи", "resp": "Маркетолог", "budget": "в бюджете марк.", "color": "A9D18E", "active_periods": ["2026-M07", "2026-M08", "2026-M09"]}, {"id": "4.7", "block": "4. Маркетинг", "name": "Рост до 7+ каналов лидогенерации", "resp": "Дир. по маркетингу", "budget": "в бюджете марк.", "color": "A9D18E", "active_periods": ["2027-Q1", "2027-Q2", "2027-Q3", "2027-Q4", "2028-Q1", "2028-Q2", "2028-Q3", "2028-Q4"]}, {"id": "5.1", "block": "5. Продукт/каталог/поставщики", "name": "Фиксация каталога, приоритизация маржи", "resp": "Продакт-мен., РОП", "budget": "-", "color": "D9B3FF", "active_periods": ["2026-M01", "2026-M02", "2026-M03"]}, {"id": "5.2", "block": "5. Продукт/каталог/поставщики", "name": "Расширение категорий (HoReCa, смежные)", "resp": "Гендир., ком.дир.", "budget": "2,5 млн", "color": "D9B3FF", "active_periods": ["2026-M01", "2026-M02", "2026-M03", "2026-M04", "2026-M05", "2026-M06", "2026-M07", "2026-M08", "2026-M09", "2026-M10", "2026-M11", "2026-M12", "2027-Q1", "2027-Q2", "2027-Q3", "2027-Q4", "2028-Q1", "2028-Q2", "2028-Q3", "2028-Q4"]}, {"id": "5.3", "block": "5. Продукт/каталог/поставщики", "name": "Ответственные менеджеры по категориям", "resp": "РОП", "budget": "-", "color": "D9B3FF", "active_periods": ["2026-M04", "2026-M05", "2026-M06", "2026-M07", "2026-M08", "2026-M09", "2026-M10", "2026-M11", "2026-M12", "2027-Q1", "2027-Q2", "2027-Q3", "2027-Q4"]}, {"id": "5.4", "block": "5. Продукт/каталог/поставщики", "name": "Альтернативные поставщики/эксклюзивы", "resp": "Ком.дир., логист", "budget": "-", "color": "D9B3FF", "active_periods": ["2026-M01", "2026-M02", "2026-M03", "2026-M04", "2026-M05", "2026-M06", "2026-M07", "2026-M08", "2026-M09", "2026-M10", "2026-M11", "2026-M12", "2027-Q1", "2027-Q2", "2027-Q3", "2027-Q4"]}, {"id": "5.5", "block": "5. Продукт/каталог/поставщики", "name": "Подготовка к собственному импорту", "resp": "Проект. офис, ком.дир.", "budget": "по решению", "color": "D9B3FF", "active_periods": ["2028-Q1", "2028-Q2", "2028-Q3", "2028-Q4", "2029-Q1", "2029-Q2", "2029-Q3", "2029-Q4", "2030-Q1", "2030-Q2", "2030-Q3", "2030-Q4"]}, {"id": "6.1", "block": "6. Продажи и каналы", "name": "Систематизация продаж в CRM", "resp": "РОП, IT", "budget": "вкл. в автоматизацию", "color": "F8CBAD", "active_periods": ["2026-M01", "2026-M02", "2026-M03", "2026-M04", "2026-M05", "2026-M06"]}, {"id": "6.2", "block": "6. Продажи и каналы", "name": "Старт холодных B2B продаж (пилот)", "resp": "РОП по B2B", "budget": "ФОТ", "color": "F8CBAD", "active_periods": ["2026-M07", "2026-M08", "2026-M09", "2026-M10", "2026-M11", "2026-M12"]}, {"id": "6.3", "block": "6. Продажи и каналы", "name": "Настройка воронки повторных продаж/LTV", "resp": "Маркетолог, продажи", "budget": "-", "color": "F8CBAD", "active_periods": ["2026-M07", "2026-M08", "2026-M09", "2026-M10", "2026-M11", "2026-M12"]}, {"id": "6.4", "block": "6. Продажи и каналы", "name": "Размещение на Wildberries/Ozon", "resp": "Продажи, маркетинг", "budget": "-", "color": "F8CBAD", "active_periods": ["2026-M10", "2026-M11", "2026-M12"]}, {"id": "6.5", "block": "6. Продажи и каналы", "name": "Первые региональные представители", "resp": "COO, HR, рег.мен.", "budget": "ФОТ", "color": "F8CBAD", "active_periods": ["2027-Q1", "2027-Q2", "2027-Q3", "2027-Q4", "2028-Q1", "2028-Q2", "2028-Q3", "2028-Q4"]}, {"id": "6.6", "block": "6. Продажи и каналы", "name": "Контроль: ни один канал не > 30%", "resp": "Директор продаж", "budget": "-", "color": "F8CBAD", "active_periods": ["2028-Q1", "2028-Q2", "2028-Q3", "2028-Q4", "2029-Q1", "2029-Q2", "2029-Q3", "2029-Q4", "2030-Q1", "2030-Q2", "2030-Q3", "2030-Q4", "2031-Q1", "2031-Q2", "2031-Q3", "2031-Q4", "2032-Q1", "2032-Q2", "2032-Q3", "2032-Q4", "2033-Q1", "2033-Q2", "2033-Q3", "2033-Q4"]}, {"id": "7.1", "block": "7. Финансы и инвестиции", "name": "Повышение маркетингового бюджета до 4-5%", "resp": "Гендир., фин.дир.", "budget": "6+ млн", "color": "BDD7EE", "active_periods": ["2026-M01", "2026-M02", "2026-M03", "2026-M04", "2026-M05", "2026-M06", "2026-M07", "2026-M08", "2026-M09", "2026-M10", "2026-M11", "2026-M12", "2027-Q1", "2027-Q2", "2027-Q3", "2027-Q4"]}, {"id": "7.2", "block": "7. Финансы и инвестиции", "name": "Контроль ДДС и точка безубыточности", "resp": "Фин. директор", "budget": "-", "color": "BDD7EE", "active_periods": ["2026-M04", "2026-M05", "2026-M06", "2026-M07", "2026-M08", "2026-M09", "2026-M10", "2026-M11", "2026-M12"]}, {"id": "7.3", "block": "7. Финансы и инвестиции", "name": "Оборотный капитал, факторинг", "resp": "Фин. директор", "budget": "5 млн", "color": "BDD7EE", "active_periods": ["2026-M01", "2026-M02", "2026-M03", "2026-M04", "2026-M05", "2026-M06", "2026-M07", "2026-M08", "2026-M09", "2026-M10", "2026-M11", "2026-M12", "2027-Q1", "2027-Q2", "2027-Q3", "2027-Q4"]}, {"id": "7.4", "block": "7. Финансы и инвестиции", "name": "Переход на ОСН, расширение финконтроля", "resp": "Фин. директор", "budget": "-", "color": "BDD7EE", "active_periods": ["2027-Q1", "2027-Q2", "2027-Q3", "2027-Q4", "2028-Q1", "2028-Q2", "2028-Q3", "2028-Q4"]}, {"id": "7.5", "block": "7. Финансы и инвестиции", "name": "Инвестиции в расширение каталога, найм, M&A", "resp": "Гендир., проект. офис", "budget": "2,5-4,0 млн+", "color": "BDD7EE", "active_periods": ["2028-Q1", "2028-Q2", "2028-Q3", "2028-Q4", "2029-Q1", "2029-Q2", "2029-Q3", "2029-Q4", "2030-Q1", "2030-Q2", "2030-Q3", "2030-Q4", "2031-Q1", "2031-Q2", "2031-Q3", "2031-Q4", "2032-Q1", "2032-Q2", "2032-Q3", "2032-Q4", "2033-Q1", "2033-Q2", "2033-Q3", "2033-Q4"]}, {"id": "8.1", "block": "8. Экспансия и M&A", "name": "Экспансия в регионы", "resp": "COO, рег. директор", "budget": "ФОТ", "color": "C6E0B4", "active_periods": ["2027-Q4", "2028-Q1", "2028-Q2", "2028-Q3", "2028-Q4", "2029-Q1", "2029-Q2", "2029-Q3", "2029-Q4"]}, {"id": "8.2", "block": "8. Экспансия и M&A", "name": "M&A региональных дилеров", "resp": "Гендир., проект. офис", "budget": ">2,0 млрд на сделки", "color": "C6E0B4", "active_periods": ["2028-Q4", "2029-Q1", "2029-Q2", "2029-Q3", "2029-Q4", "2030-Q1", "2030-Q2", "2030-Q3", "2030-Q4", "2031-Q1", "2031-Q2", "2031-Q3", "2031-Q4"]}, {"id": "8.3", "block": "8. Экспансия и M&A", "name": "Организационная консолидация (дивизионы)", "resp": "COO, топ-менеджмент", "budget": "-", "color": "C6E0B4", "active_periods": ["2029-Q1", "2029-Q2", "2029-Q3", "2029-Q4", "2030-Q1", "2030-Q2", "2030-Q3", "2030-Q4"]}, {"id": "9.1", "block": "9. Управление рисками", "name": "Диверсификация каналов лидогенерации", "resp": "Маркетинг, продажи", "budget": "-", "color": "FFE699", "active_periods": ["2026-M01", "2026-M02", "2026-M03", "2026-M04", "2026-M05", "2026-M06", "2026-M07", "2026-M08", "2026-M09", "2026-M10", "2026-M11", "2026-M12", "2027-Q1", "2027-Q2", "2027-Q3", "2027-Q4", "2028-Q1", "2028-Q2", "2028-Q3", "2028-Q4"]}, {"id": "9.2", "block": "9. Управление рисками", "name": "Системный пул найма, воронка рекрутинга", "resp": "HR, руководители", "budget": "-", "color": "FFE699", "active_periods": ["2026-M01", "2026-M02", "2026-M03", "2026-M04", "2026-M05", "2026-M06", "2026-M07", "2026-M08", "2026-M09", "2026-M10", "2026-M11", "2026-M12", "2027-Q1", "2027-Q2", "2027-Q3", "2027-Q4", "2028-Q1", "2028-Q2", "2028-Q3", "2028-Q4", "2029-Q1", "2029-Q2", "2029-Q3", "2029-Q4", "2030-Q1", "2030-Q2", "2030-Q3", "2030-Q4", "2031-Q1", "2031-Q2", "2031-Q3", "2031-Q4", "2032-Q1", "2032-Q2", "2032-Q3", "2032-Q4", "2033-Q1", "2033-Q2", "2033-Q3", "2033-Q4"]}, {"id": "9.3", "block": "9. Управление рисками", "name": "Запас поставщиков в каждой категории", "resp": "Ком. директор", "budget": "-", "color": "FFE699", "active_periods": ["2026-M01", "2026-M02", "2026-M03", "2026-M04", "2026-M05", "2026-M06", "2026-M07", "2026-M08", "2026-M09", "2026-M10", "2026-M11", "2026-M12", "2027-Q1", "2027-Q2", "2027-Q3", "2027-Q4"]}, {"id": "9.4", "block": "9. Управление рисками", "name": "Факторинг/лизинг для клиентов", "resp": "Фин. директор", "budget": "-", "color": "FFE699", "active_periods": ["2026-M01", "2026-M02", "2026-M03", "2026-M04", "2026-M05", "2026-M06", "2026-M07", "2026-M08", "2026-M09", "2026-M10", "2026-M11", "2026-M12", "2027-Q1", "2027-Q2", "2027-Q3", "2027-Q4", "2028-Q1", "2028-Q2", "2028-Q3", "2028-Q4"]}, {"id": "9.5", "block": "9. Управление рисками", "name": "Еженедельный мониторинг ДДС", "resp": "Фин. директор", "budget": "-", "color": "FFE699", "active_periods": ["2026-M04", "2026-M05", "2026-M06", "2026-M07", "2026-M08", "2026-M09", "2026-M10", "2026-M11", "2026-M12", "2027-Q1", "2027-Q2", "2027-Q3", "2027-Q4", "2028-Q1", "2028-Q2", "2028-Q3", "2028-Q4", "2029-Q1", "2029-Q2", "2029-Q3", "2029-Q4", "2030-Q1", "2030-Q2", "2030-Q3", "2030-Q4", "2031-Q1", "2031-Q2", "2031-Q3", "2031-Q4", "2032-Q1", "2032-Q2", "2032-Q3", "2032-Q4", "2033-Q1", "2033-Q2", "2033-Q3", "2033-Q4"]}, {"id": "M1", "block": "10. Контрольные точки (Milestones)", "name": "Выручка >18 млн/мес, штат 10-11 чел.", "resp": "Гендир., РОП", "budget": "-", "color": "FF7C80", "active_periods": ["2026-M01", "2026-M02", "2026-M03"]}, {"id": "M2", "block": "10. Контрольные точки (Milestones)", "name": "Точка безубыточности (>243 млн/год)", "resp": "Фин. директор", "budget": "-", "color": "FF7C80", "active_periods": ["2026-M10", "2026-M11", "2026-M12", "2027-Q1"]}, {"id": "M3", "block": "10. Контрольные точки (Milestones)", "name": "500 млн годовой выручки", "resp": "Ком. директор", "budget": "-", "color": "FF7C80", "active_periods": ["2027-Q3", "2027-Q4"]}, {"id": "M4", "block": "10. Контрольные точки (Milestones)", "name": "1 млрд/год, 44 чел., регион. офисы", "resp": "COO, HR, Ком.дир.", "budget": "-", "color": "FF7C80", "active_periods": ["2028-Q4"]}, {"id": "M5", "block": "10. Контрольные точки (Milestones)", "name": "2,25-4,27 млрд/год", "resp": "COO, CEO", "budget": "-", "color": "FF7C80", "active_periods": ["2030-Q1", "2030-Q2", "2030-Q3", "2030-Q4"]}, {"id": "M6", "block": "10. Контрольные точки (Milestones)", "name": "Интеграция M&A и собственный импорт", "resp": "Проект. офис, фин.дир.", "budget": "-", "color": "FF7C80", "active_periods": ["2029-Q1", "2029-Q2", "2029-Q3", "2029-Q4", "2030-Q1", "2030-Q2", "2030-Q3", "2030-Q4", "2031-Q1", "2031-Q2", "2031-Q3", "2031-Q4", "2032-Q1", "2032-Q2", "2032-Q3", "2032-Q4"]}, {"id": "M7", "block": "10. Контрольные точки (Milestones)", "name": "10 млрд/год (2,14% TAM)", "resp": "Совет директоров, CEO", "budget": "-", "color": "FF7C80", "active_periods": ["2031-Q1", "2031-Q2", "2031-Q3", "2031-Q4", "2032-Q1", "2032-Q2", "2032-Q3", "2032-Q4", "2033-Q1", "2033-Q2", "2033-Q3", "2033-Q4"]}];
+const PERIODS = [{"key": "2026-M01", "year": 2026, "unit": "month", "index": 1, "label": "янв 26"}, {"key": "2026-M02", "year": 2026, "unit": "month", "index": 2, "label": "фев 26"}, {"key": "2026-M03", "year": 2026, "unit": "month", "index": 3, "label": "мар 26"}, {"key": "2026-M04", "year": 2026, "unit": "month", "index": 4, "label": "апр 26"}, {"key": "2026-M05", "year": 2026, "unit": "month", "index": 5, "label": "май 26"}, {"key": "2026-M06", "year": 2026, "unit": "month", "index": 6, "label": "июн 26"}, {"key": "2026-M07", "year": 2026, "unit": "month", "index": 7, "label": "июл 26"}, {"key": "2026-M08", "year": 2026, "unit": "month", "index": 8, "label": "авг 26"}, {"key": "2026-M09", "year": 2026, "unit": "month", "index": 9, "label": "сен 26"}, {"key": "2026-M10", "year": 2026, "unit": "month", "index": 10, "label": "окт 26"}, {"key": "2026-M11", "year": 2026, "unit": "month", "index": 11, "label": "ноя 26"}, {"key": "2026-M12", "year": 2026, "unit": "month", "index": 12, "label": "дек 26"}, {"key": "2027-Q1", "year": 2027, "unit": "quarter", "index": 1, "label": "Q1 27"}, {"key": "2027-Q2", "year": 2027, "unit": "quarter", "index": 2, "label": "Q2 27"}, {"key": "2027-Q3", "year": 2027, "unit": "quarter", "index": 3, "label": "Q3 27"}, {"key": "2027-Q4", "year": 2027, "unit": "quarter", "index": 4, "label": "Q4 27"}, {"key": "2028-Q1", "year": 2028, "unit": "quarter", "index": 1, "label": "Q1 28"}, {"key": "2028-Q2", "year": 2028, "unit": "quarter", "index": 2, "label": "Q2 28"}, {"key": "2028-Q3", "year": 2028, "unit": "quarter", "index": 3, "label": "Q3 28"}, {"key": "2028-Q4", "year": 2028, "unit": "quarter", "index": 4, "label": "Q4 28"}, {"key": "2029-Q1", "year": 2029, "unit": "quarter", "index": 1, "label": "Q1 29"}, {"key": "2029-Q2", "year": 2029, "unit": "quarter", "index": 2, "label": "Q2 29"}, {"key": "2029-Q3", "year": 2029, "unit": "quarter", "index": 3, "label": "Q3 29"}, {"key": "2029-Q4", "year": 2029, "unit": "quarter", "index": 4, "label": "Q4 29"}, {"key": "2030-Q1", "year": 2030, "unit": "quarter", "index": 1, "label": "Q1 30"}, {"key": "2030-Q2", "year": 2030, "unit": "quarter", "index": 2, "label": "Q2 30"}, {"key": "2030-Q3", "year": 2030, "unit": "quarter", "index": 3, "label": "Q3 30"}, {"key": "2030-Q4", "year": 2030, "unit": "quarter", "index": 4, "label": "Q4 30"}, {"key": "2031-Q1", "year": 2031, "unit": "quarter", "index": 1, "label": "Q1 31"}, {"key": "2031-Q2", "year": 2031, "unit": "quarter", "index": 2, "label": "Q2 31"}, {"key": "2031-Q3", "year": 2031, "unit": "quarter", "index": 3, "label": "Q3 31"}, {"key": "2031-Q4", "year": 2031, "unit": "quarter", "index": 4, "label": "Q4 31"}, {"key": "2032-Q1", "year": 2032, "unit": "quarter", "index": 1, "label": "Q1 32"}, {"key": "2032-Q2", "year": 2032, "unit": "quarter", "index": 2, "label": "Q2 32"}, {"key": "2032-Q3", "year": 2032, "unit": "quarter", "index": 3, "label": "Q3 32"}, {"key": "2032-Q4", "year": 2032, "unit": "quarter", "index": 4, "label": "Q4 32"}, {"key": "2033-Q1", "year": 2033, "unit": "quarter", "index": 1, "label": "Q1 33"}, {"key": "2033-Q2", "year": 2033, "unit": "quarter", "index": 2, "label": "Q2 33"}, {"key": "2033-Q3", "year": 2033, "unit": "quarter", "index": 3, "label": "Q3 33"}, {"key": "2033-Q4", "year": 2033, "unit": "quarter", "index": 4, "label": "Q4 33"}];
+const BLOCK_COLORS = {"1. Организация и управление": "F4B183", "2. Штат и найм": "FFD966", "3. IT и автоматизация": "9DC3E6", "4. Маркетинг": "A9D18E", "5. Продукт/каталог/поставщики": "D9B3FF", "6. Продажи и каналы": "F8CBAD", "7. Финансы и инвестиции": "BDD7EE", "8. Экспансия и M&A": "C6E0B4", "9. Управление рисками": "FFE699", "10. Контрольные точки (Milestones)": "FF7C80"};
+
+const STATUS_CYCLE = ["notstarted", "progress", "done", "late"];
+const STATUS_LABELS = { notstarted: "Не начато", progress: "В работе", done: "Выполнено", late: "Отставание" };
+const STATUS_ICONS = { notstarted: "", progress: "\u25CF", done: "\u2713", late: "!" };
+
+let statuses = {};
+let isSyncConfigured = SCRIPT_URL.indexOf("ВСТАВЬТЕ_СЮДА") === -1;
+
+function cellKey(taskId, periodKey) { return taskId + "_" + periodKey; }
+function getStatus(taskId, periodKey) { return statuses[cellKey(taskId, periodKey)] || "notstarted"; }
+function setStatusLocal(taskId, periodKey, status) { statuses[cellKey(taskId, periodKey)] = status; }
+
+function showToast(msg, isError) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast show" + (isError ? " error" : "");
+  setTimeout(() => { t.className = "toast"; }, 2600);
+}
+
+function setSyncState(state, text) {
+  document.getElementById("syncDot").className = "sync-dot " + state;
+  document.getElementById("syncText").textContent = text;
+}
+
+async function fetchStatusesFromSheet() {
+  if (!isSyncConfigured) {
+    setSyncState("err", "SCRIPT_URL не настроен — сайт работает без синхронизации с таблицей");
+    return;
+  }
+  setSyncState("loading", "Загрузка статусов из Google Таблицы...");
+  try {
+    const resp = await fetch(SCRIPT_URL, { method: "GET" });
+    const json = await resp.json();
+    if (!json.success) throw new Error(json.error || "Unknown error");
+    statuses = {};
+    json.data.forEach(row => {
+      statuses[cellKey(row.TaskID, row.PeriodKey)] = row.StatusCode || "notstarted";
+    });
+    setSyncState("ok", "Синхронизировано с Google Таблицей");
+    buildBody();
+    updateStats();
+  } catch (err) {
+    console.error(err);
+    setSyncState("err", "Ошибка подключения: " + err.message);
+  }
+}
+
+async function pushStatusToSheet(taskId, periodKey, statusCode) {
+  if (!isSyncConfigured) return;
+  try {
+    await fetch(SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ taskId, periodKey, statusCode })
+    });
+  } catch (err) {
+    console.error("Push error:", err);
+    showToast("Не удалось записать в таблицу: " + err.message, true);
+  }
+}
+
+function isTaskActiveInPeriod(task, periodKey) { return task.active_periods.indexOf(periodKey) !== -1; }
+
+function buildHeader() {
+  const headRow = document.getElementById("headRow");
+  let lastYear = null;
+  PERIODS.forEach(p => {
+    const th = document.createElement("th");
+    th.textContent = p.label;
+    th.dataset.year = p.year;
+    if (p.year !== lastYear) { th.classList.add("year-sep"); lastYear = p.year; }
+    headRow.appendChild(th);
+  });
+  const thResp = document.createElement("th");
+  thResp.textContent = "Ответственный";
+  thResp.style.minWidth = "120px";
+  headRow.appendChild(thResp);
+}
+
+function buildBody() {
+  const body = document.getElementById("ganttBody");
+  body.innerHTML = "";
+  let currentBlock = null;
+  const yearFilter = document.getElementById("yearFilter").value;
+  const blockFilter = document.getElementById("blockFilter").value;
+
+  TASKS.forEach(task => {
+    if (blockFilter !== "all" && task.block !== blockFilter) return;
+
+    if (task.block !== currentBlock) {
+      currentBlock = task.block;
+      const trBlock = document.createElement("tr");
+      trBlock.className = "block-row";
+      const totalCols = 1 + PERIODS.length + 1;
+      const td = document.createElement("td");
+      td.colSpan = totalCols;
+      td.textContent = task.block;
+      td.style.background = "#" + task.color;
+      trBlock.appendChild(td);
+      body.appendChild(trBlock);
+    }
+
+    const tr = document.createElement("tr");
+    tr.dataset.taskId = task.id;
+
+    const tdName = document.createElement("td");
+    tdName.className = "task-name";
+    tdName.innerHTML = '<span class="task-id-badge">' + task.id + '</span>' + task.name +
+      (task.budget && task.budget !== "-" ? '<div style="color:var(--muted);font-size:10px;margin-top:2px;">' + task.budget + '</div>' : '');
+    tr.appendChild(tdName);
+
+    PERIODS.forEach(p => {
+      const td = document.createElement("td");
+      if (yearFilter !== "all" && String(p.year) !== yearFilter) td.style.display = "none";
+
+      const active = isTaskActiveInPeriod(task, p.key);
+      if (active) {
+        const cellDiv = document.createElement("div");
+        const status = getStatus(task.id, p.key);
+        cellDiv.className = "cell status-" + status;
+        cellDiv.textContent = STATUS_ICONS[status];
+        cellDiv.title = task.name + " - " + p.label + " (" + STATUS_LABELS[status] + ")";
+        if (status === "notstarted") {
+          cellDiv.style.background = "#" + task.color + "33";
+          cellDiv.style.border = "1px solid #" + task.color;
+        }
+        cellDiv.addEventListener("click", () => cycleStatus(task, p.key, cellDiv, 1));
+        cellDiv.addEventListener("contextmenu", (e) => { e.preventDefault(); cycleStatus(task, p.key, cellDiv, -1); });
+        td.appendChild(cellDiv);
+      } else {
+        const emptyDiv = document.createElement("div");
+        emptyDiv.className = "cell empty";
+        td.appendChild(emptyDiv);
+      }
+      tr.appendChild(td);
+    });
+
+    const tdResp = document.createElement("td");
+    tdResp.className = "resp-col";
+    tdResp.textContent = task.resp;
+    tr.appendChild(tdResp);
+
+    body.appendChild(tr);
+  });
+}
+
+async function cycleStatus(task, periodKey, cellDiv, direction) {
+  const current = getStatus(task.id, periodKey);
+  let idx = STATUS_CYCLE.indexOf(current);
+  idx = (idx + direction + STATUS_CYCLE.length) % STATUS_CYCLE.length;
+  const next = STATUS_CYCLE[idx];
+
+  setStatusLocal(task.id, periodKey, next);
+  cellDiv.className = "cell status-" + next + " syncing";
+  cellDiv.textContent = STATUS_ICONS[next];
+  if (next === "notstarted") {
+    cellDiv.style.background = "#" + task.color + "33";
+    cellDiv.style.border = "1px solid #" + task.color;
+  } else {
+    cellDiv.style.background = "";
+    cellDiv.style.border = "1px solid rgba(255,255,255,0.08)";
+  }
+  updateStats();
+  await pushStatusToSheet(task.id, periodKey, next);
+  cellDiv.classList.remove("syncing");
+}
+
+function updateStats() {
+  let done=0, progress=0, late=0, notstarted=0, total=0;
+  TASKS.forEach(task => {
+    task.active_periods.forEach(pk => {
+      total++;
+      const s = getStatus(task.id, pk);
+      if (s === "done") done++;
+      else if (s === "progress") progress++;
+      else if (s === "late") late++;
+      else notstarted++;
+    });
+  });
+  const pct = total > 0 ? Math.round((done/total)*100) : 0;
+  document.getElementById("statsBar").innerHTML =
+    '<div class="stat-card percent"><div class="num">' + pct + '%</div><div class="label">Общий прогресс</div></div>' +
+    '<div class="stat-card done"><div class="num">' + done + '</div><div class="label">Выполнено</div></div>' +
+    '<div class="stat-card progress"><div class="num">' + progress + '</div><div class="label">В работе</div></div>' +
+    '<div class="stat-card late"><div class="num">' + late + '</div><div class="label">Отставание</div></div>' +
+    '<div class="stat-card notstarted"><div class="num">' + notstarted + '</div><div class="label">Не начато</div></div>';
+}
+
+function buildFilters() {
+  const yearFilter = document.getElementById("yearFilter");
+  const years = PERIODS.map(p => p.year).filter((y, i, arr) => arr.indexOf(y) === i);
+  years.forEach(y => {
+    const opt = document.createElement("option");
+    opt.value = y; opt.textContent = y;
+    yearFilter.appendChild(opt);
+  });
+  const blockFilter = document.getElementById("blockFilter");
+  Object.keys(BLOCK_COLORS).forEach(b => {
+    const opt = document.createElement("option");
+    opt.value = b; opt.textContent = b;
+    blockFilter.appendChild(opt);
+  });
+  yearFilter.addEventListener("change", buildBody);
+  blockFilter.addEventListener("change", buildBody);
+}
+
+document.getElementById("refreshBtn").addEventListener("click", fetchStatusesFromSheet);
+
+buildHeader();
+buildFilters();
+buildBody();
+updateStats();
+fetchStatusesFromSheet();
+</script>
+</body>
+</html>
